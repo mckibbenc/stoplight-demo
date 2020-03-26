@@ -11,7 +11,7 @@ For this example, you'll need to be the owner of an existing Slack workspace.
 ## Creating your Trigger
 2. Click the _Make a Zap!_ icon in the upper right hand side:
 
-![make a zap](../../assets/images/zapier-tutorial/make_a_zap.png)
+![make a zap](../../assets/images/make_a_zap.png)
 
 
 
