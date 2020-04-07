@@ -17,7 +17,7 @@ paths:
       tags:
         - Files
       summary: Submit a single file for analysis
-      description: 'This endpoint submits a binary file for analysis. **Your file must be less than 5MB.**'
+      description: 'This endpoint submits a binary file for analysis. **Your file must be less than 32MB.**'
       operationId: postFile
       requestBody:
         required: true
@@ -81,13 +81,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Forbidden'
         '413':
-          description: Request Entity Too Large -- The file you provided was more than 5MB.
+          description: Request Entity Too Large -- The file you provided was more than 32MB.
           content:
             text/plain:
               schema:
                 type: string
                 example: HTTP content length exceeded 10485760 bytes.
-                description: 'This means the file you sent was greater than 5MB. **Filesize must be 5MB or less.**'
+                description: 'This means the file you sent was greater than 32MB. **Filesize must be 32MB or less.**'
         '429':
           description: Too Many Requests
           content:
@@ -136,7 +136,21 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/ReportNotExtended'
                   - $ref: '#/components/schemas/ReportExtended'
-                example: 'Check '
+                example: "Check 'Schema' for examples."
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                    example: failed
+                    description: This means that you did not provide a report ID.
+                  message:
+                    type: string
+                    example: Report ID not provided.
+                    description: This means that you did not provide a report ID.
         '401':
           description: Unauthorized
           content:
@@ -161,20 +175,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InternalServerError'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                properties:
-                  status:
-                    type: string
-                    example: failed
-                    description: This means that you did not provide a report ID.
-                  message:
-                    type: string
-                    example: Report ID not provided.
-                    description: This means that you did not provide a report ID.
   '/hashes/{hash_id}':
     get:
       tags:
@@ -207,37 +207,65 @@ paths:
                     enum:
                       - true
                       - false
-                    description: This is FireEye
-                'null':
-                  type: object
-                  properties:
-                    first_seen:
-                      type: string
-                      example: N/A
-                    industry:
-                      type: array
-                      items:
-                        type: string
-                    overall_weight:
-                      type: integer
-                      example: 100
-                    display_message:
-                      type: array
-                      items:
-                        type: string
-                        example:
-                          - msg1
-                          - msg2
-                    signature_name:
-                      type: array
-                      items:
-                        type: string
-                        example:
-                          - Trojan.Grp.FEC3
-                          - Trojan.Genkryptik
-                    verdict:
-                      type: string
-                      example: malicious
+                    description: "This is FireEye's final determination if the file is malicious or not."
+                  engine_results:
+                    type: object
+                    properties:
+                      dynamic_analysis:
+                        type: object
+                        properties:
+                          verdict:
+                            type: string
+                            enum:
+                              - found
+                              - not_found
+                            example: not_found
+                      av_lookup:
+                        type: object
+                        properties:
+                          first_seen:
+                            type: string
+                            example: '2019-08-31T20:36:39'
+                            description: When this file was first seen by the av_lookup engine.
+                          last_seen:
+                            type: string
+                            example: '2019-09-18T15:46:00'
+                            description: When this file was last seen by the av_lookup engine.
+                          signature_name:
+                            type: array
+                            items:
+                              type: string
+                              example: Trojan.Grp.FEC3
+                          verdict:
+                            type: string
+                            example: malicious
+                      dti_lookup:
+                        type: object
+                        properties:
+                          first_seen:
+                            type: string
+                            example: N/A
+                          industry:
+                            type: array
+                            items:
+                              type: string
+                          overall_weight:
+                            type: integer
+                            example: 100
+                          display_message:
+                            type: array
+                            items:
+                              type: string
+                              example: msg2
+                          signature_name:
+                            type: array
+                            items:
+                              type: string
+                              example: Trojan.Grp.FEC3
+                          verdict:
+                            type: string
+                            example: malicious
+              examples: {}
         '400':
           description: Bad Request
           content:
@@ -340,7 +368,7 @@ components:
             - true
             - false
           example: true
-          description: FireEye
+          description: "FireEye's final determination if the file is malicious or not."
         file_extension:
           type: string
           example: .exe
@@ -366,6 +394,19 @@ components:
           items:
             type: string
             example: Malware.Binary.doc
+        duration:
+          type: number
+          format: float
+          example: 13
+          description: The processing time in seconds.
+        completed_at:
+          type: string
+          example: '2019-09-25 03:17:03.274173'
+          description: The time processing was completed.
+        started_at:
+          type: string
+          example: '2019-09-25 03:16:49.378576'
+          description: The time processing was started.
     ReportExtended:
       properties:
         report_id:
@@ -385,7 +426,7 @@ components:
             - true
             - false
           example: true
-          description: FireEye
+          description: "FireEye's final determination if the file is malicious or not."
         file_extension:
           type: string
           example: .exe
@@ -433,7 +474,18 @@ components:
                 verdict:
                   type: string
                   example: malicious
-                  description: av_lookup
+                  description: "av_lookup's verdict for this file."
+            dynamic_analysis:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 209223
+                  description: ID of the analysis job.
+                uuid:
+                  type: string
+                  example: 220c48e0-ba9e-4faf-bd57-d2783d11a39c
+                  description: UUID of the analysis job.
                 is_malicious:
                   type: integer
                   example: 1
@@ -514,10 +566,50 @@ components:
                                         description: Dynamic Analysis job ID.
                                       os_activity_node:
                                         type: string
-                                        example: <analysis mode=
-                              'null':
-                                type: integer
-                                example: 80
+                                        example: '<analysis mode="malware" ftype="doc" version="1.4666" product="API"/>'
+                                correlation_results:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: integer
+                                      example: 7447268
+                                    job_id:
+                                      type: integer
+                                      example: 209112
+                                    weight:
+                                      type: integer
+                                      example: 0
+                                    class_type:
+                                      type: string
+                                      example: AnalysisType SANDBOX_MODE
+                                    display_message:
+                                      type: string
+                                      example: Track Sandbox Mode Submissions Objects
+                            total_weight:
+                              type: integer
+                              example: 500
+                              description: Total weight of multiple jobs.
+                            anomaly_types:
+                              type: integer
+                              example: 98304
+                            network_anomaly:
+                              type: object
+                              properties:
+                                job_id:
+                                  type: integer
+                                  example: 209112
+                                payload:
+                                  type: string
+                                  example: "GET /vIcYUATb/ HTTP/1.1\\015\\012Host: www.lacancha.pe\\015\\012Connection: Keep-Alive\\015\\012\\015\\012GET /vIcYUATb/ HTTP/1.1\\015\\012Host: www.lacancha.pe\\015\\012"
+                                dns_name:
+                                  type: string
+                                  example: www.lacancha.pe
+                                net_proto:
+                                  type: integer
+                                  example: 6
+                                service_port:
+                                  type: integer
+                                  example: 80
                         original_name:
                           type: string
                 files_analyzed:
@@ -526,6 +618,26 @@ components:
                 overall_weight:
                   type: integer
                   example: 500
+            dti_lookup:
+              type: object
+              properties:
+                verdict:
+                  type: string
+                  example: not_found
+                  description: "DTI's verdict for this file."
+        duration:
+          type: number
+          format: float
+          example: 13
+          description: The processing time in seconds.
+        completed_at:
+          type: string
+          example: '2019-09-25 03:17:03.274173'
+          description: The time processing was completed.
+        started_at:
+          type: string
+          example: '2019-09-25 03:16:49.378576'
+          description: The time processing was started.
 security:
   - FireEyeAPIKey: []
 tags:
