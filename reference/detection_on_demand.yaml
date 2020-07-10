@@ -100,6 +100,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InternalServerError'
+      parameters: []
   '/reports/{report_id}':
     get:
       tags:
@@ -137,6 +138,8 @@ paths:
                   - $ref: '#/components/schemas/ReportNotExtended'
                   - $ref: '#/components/schemas/ReportExtended'
                 example: "Check 'Schema' for examples."
+              examples:
+                example-1: {}
         '400':
           description: Bad Request
           content:
@@ -151,6 +154,11 @@ paths:
                     type: string
                     example: Report ID not provided.
                     description: This means that you did not provide a report ID.
+              examples:
+                example:
+                  value:
+                    status: failed
+                    message: Report ID not provided.
         '401':
           description: Unauthorized
           content:
